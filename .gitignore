@@ -1,0 +1,35 @@
+# Java / Spring Boot
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/
+HELP.md
+
+# Node (if used for frontend tooling)
+node_modules/
+npm-debug.log*
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Environment / secrets — never commit these
+.env
+.env.*
+*.pem
+*.key
+kubeconfig
+**/application-local.yml
+**/application-secrets.yml
+
+# Terraform (if used later)
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Build artifacts
+dist/
+build/
