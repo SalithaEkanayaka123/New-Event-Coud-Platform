@@ -1,0 +1,35 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: registration-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/eventdb
+    username: eventapp
+    password: changeme_local_dev
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# Externalised so this can point at localhost:8081 for local dev today,
+# and http://event-service:8080 (k8s internal service DNS) once deployed
+# to the cluster on Day 7 - no code change needed, just this one value.
+event-service:
+  base-url: http://localhost:8081
+
+# Matches the brief's example threshold ("e.g. < 10 seats left").
+# Externalised rather than hardcoded so it's easy to point out and justify
+# as a configuration decision, not a magic number buried in code.
+app:
+  seat-threshold: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
