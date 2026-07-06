@@ -1,0 +1,28 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: event-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/eventdb
+    username: eventapp
+    password: changeme_local_dev
+  jpa:
+    hibernate:
+      # update is fine for local dev; we'll switch to a proper migration
+      # tool (Flyway/Liquibase) mention in the report if there's time -
+      # for now this keeps Sprint 1 moving
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  # Exposed for the Observability requirement (#6) - Prometheus will scrape
+  # this later once deployed to the cluster
