@@ -1,0 +1,18 @@
+# Sized to the ~800MB budget assumed in capacity planning - adjust if
+# real usage looks different once actually running.
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "900Mi"
+    cpu: "1"
+
+persistence:
+  enabled: true
+  size: 5Gi
+  # 5GB is generous for a coursework-scale analytics dataset
+
+replicaCount: 1
+# Single-node, matching the single-EC2-instance architecture - no
+# clustering/replication needed for this scale.

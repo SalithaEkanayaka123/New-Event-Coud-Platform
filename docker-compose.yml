@@ -1,9 +1,5 @@
 version: '3.8'
 
-# Local-first workflow (per module guidance): build and test everything here
-# before deploying to the k3s cluster. Uncomment each service as you build it
-# through Sprint 1 (Days 3-7).
-
 services:
   postgres:
     image: postgres:16
@@ -17,59 +13,36 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U eventapp"]
+      test: ["CMD-SHELL", "pg_isready -U eventapp -d eventdb"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # --- Day 4-5: Event Service ---
-  # event-service:
-  #   build: ./event-service
-  #   container_name: event-service
-  #   ports:
-  #     - "8081:8080"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eventdb
-  #     SPRING_DATASOURCE_USERNAME: eventapp
-  #     SPRING_DATASOURCE_PASSWORD: changeme_local_dev
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: analytics
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: changeme_local_dev
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
 
-  # --- Day 6: Program Service ---
-  # program-service:
-  #   build: ./program-service
-  #   container_name: program-service
-  #   ports:
-  #     - "8082:8080"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eventdb
-  #     SPRING_DATASOURCE_USERNAME: eventapp
-  #     SPRING_DATASOURCE_PASSWORD: changeme_local_dev
-
-  # --- Day 7: Registration Service ---
-  # registration-service:
-  #   build: ./registration-service
-  #   container_name: registration-service
-  #   ports:
-  #     - "8083:8080"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eventdb
-  #     SPRING_DATASOURCE_USERNAME: eventapp
-  #     SPRING_DATASOURCE_PASSWORD: changeme_local_dev
-
-  # --- Day 9: Frontend ---
-  # frontend:
-  #   build: ./frontend
-  #   container_name: frontend
-  #   ports:
-  #     - "8080:80"
+  metabase:
+    image: metabase/metabase:v0.51.0
+    container_name: metabase
+    ports:
+      - "3000:3000"
+    depends_on:
+      - clickhouse
 
 volumes:
   postgres_data:
+  clickhouse_data:
