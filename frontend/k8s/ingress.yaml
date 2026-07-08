@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend
+  # k3s ships with Traefik as its default Ingress controller - you don't
+  # need to install anything extra for this to work, unlike a bare
+  # kubeadm cluster where you'd have to add an ingress controller yourself.
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
