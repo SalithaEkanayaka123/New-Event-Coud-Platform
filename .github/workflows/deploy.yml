@@ -1,0 +1,105 @@
+name: Build and Deploy (Blue-Green)
+
+# Triggered on every push to main. A real project might restrict this to
+# tags/releases, but for a coursework-scale pipeline, push-to-main is
+# simple and easy to explain/defend at the viva.
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # ---------------------------------------------------------------------
+  # BUILD STAGE - fully real and testable right now (Day 9), no EC2
+  # needed. Only needs Docker Hub credentials as GitHub repo secrets:
+  #   DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+  # ---------------------------------------------------------------------
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # One job definition, reused for all 4 components via a matrix -
+        # avoids copy-pasting the same steps 4 times, and scales cleanly
+        # if a 5th component were ever added.
+        service: [event-service, program-service, registration-service, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          # Tagged with the commit SHA, not "latest" - makes rollback to
+          # a specific known-good version genuinely possible, rather than
+          # just "whatever wasn't overwritten yet."
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/new-event-${{ matrix.service }}:${{ github.sha }}
+
+  # ---------------------------------------------------------------------
+  # DEPLOY STAGE - written now, but cannot succeed until Day 17, when
+  # the KUBECONFIG_DATA secret (pointing at the real EC2/k3s cluster)
+  # exists. Assumes each service already has blue/green Deployment pairs
+  # (event-service-blue, event-service-green, etc.) and one Service per
+  # component with a "color" selector - set up when services are deployed
+  # (Day 11) and frontend/ClickHouse are deployed (Day 13).
+  # ---------------------------------------------------------------------
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
+
+      - name: Determine idle color
+        id: idle
+        run: |
+          # Assumes all 4 components are kept in sync (deployed together,
+          # same color live at any given time) - a reasonable assumption
+          # for a coursework-scale system with one shared cutover instant.
+          CURRENT=$(kubectl get service event-service -o jsonpath='{.spec.selector.color}')
+          if [ "$CURRENT" == "blue" ]; then
+            echo "color=green" >> $GITHUB_OUTPUT
+          else
+            echo "color=blue" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy new image to idle color
+        run: |
+          for svc in event-service program-service registration-service frontend; do
+            kubectl set image deployment/${svc}-${{ steps.idle.outputs.color }} \
+              ${svc}=${{ secrets.DOCKERHUB_USERNAME }}/new-event-${svc}:${{ github.sha }}
+            kubectl rollout status deployment/${svc}-${{ steps.idle.outputs.color }} --timeout=60s
+          done
+
+      - name: Smoke test idle color before cutover
+        run: |
+          # Exec into an idle-color pod directly and hit its own health
+          # endpoint - avoids needing a second, separate "internal-only"
+          # Service object just for pre-cutover testing.
+          for svc in event-service program-service registration-service; do
+            POD=$(kubectl get pod -l app=${svc},color=${{ steps.idle.outputs.color }} -o jsonpath='{.items[0].metadata.name}')
+            kubectl exec $POD -- curl -sf http://localhost:8080/actuator/health
+          done
+
+      - name: Cut over traffic to the new color
+        run: |
+          for svc in event-service program-service registration-service frontend; do
+            kubectl patch service ${svc} -p '{"spec":{"selector":{"color":"${{ steps.idle.outputs.color }}"}}}'
+          done
+
+      # Deliberately NOT scaling down the old color here - kept running
+      # briefly as a rollback option. Scaling down after a verification
+      # window is a manual step for now (documented in the runbook),
+      # not automated - a reasonable scope boundary for this project.
