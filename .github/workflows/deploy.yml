@@ -16,6 +16,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         # One job definition, reused for all 4 components via a matrix -
         # avoids copy-pasting the same steps 4 times, and scales cleanly
