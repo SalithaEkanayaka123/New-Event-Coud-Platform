@@ -1,11 +1,11 @@
 server:
-  port: 8081
+  port: 8080
 
 spring:
   application:
     name: event-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/eventdb
+    url: jdbc:postgresql://postgres:5432/eventdb
     username: eventapp
     password: changeme_local_dev
   jpa:
@@ -23,6 +23,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
-  # Exposed for the Observability requirement (#6) - Prometheus will scrape
-  # this later once deployed to the cluster
+        include: health,info,prometheus
+  # health,info exposed for basic checks; prometheus exposed for the
+  # Observability requirement (#6) - Prometheus will scrape this later
+  # once deployed to the cluster (Day 14)

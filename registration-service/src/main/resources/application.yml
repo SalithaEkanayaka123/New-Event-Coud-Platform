@@ -1,11 +1,14 @@
 server:
-  port: 8083
+  port: 8080
 
 spring:
   application:
     name: registration-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/eventdb
+    # In-cluster K8s Service DNS name, standard port - no more localhost:5433
+    # workaround, that was only needed to dodge the native Windows Postgres
+    # conflict on your own laptop, which doesn't exist inside the cluster.
+    url: jdbc:postgresql://postgres:5432/eventdb
     username: eventapp
     password: changeme_local_dev
   jpa:
@@ -16,17 +19,18 @@ spring:
       hibernate:
         format_sql: true
 
-# Externalised so this can point at localhost:8081 for local dev today,
-# and http://event-service:8080 (k8s internal service DNS) once deployed
-# to the cluster on Day 7 - no code change needed, just this one value.
+# In-cluster K8s Service DNS name for Event Service too - was
+# http://localhost:8081 for local testing, now the real service name.
 event-service:
-  base-url: http://localhost:8081
+  base-url: http://event-service:8080
 
-# Matches the brief's example threshold ("e.g. < 10 seats left").
-# Externalised rather than hardcoded so it's easy to point out and justify
-# as a configuration decision, not a magic number buried in code.
 app:
   seat-threshold: 10
+
+aws:
+  region: us-east-1
+  lambda:
+    function-name: seat-threshold-notifier
 
 management:
   endpoints:

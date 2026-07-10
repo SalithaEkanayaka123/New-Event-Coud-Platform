@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: program-service-blue
+  labels:
+    app: program-service
+    color: blue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: program-service
+      color: blue
+  template:
+    metadata:
+      labels:
+        app: program-service
+        color: blue
+    spec:
+      containers:
+        - name: program-service
+          image: salitha12345/new-event-program-service:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "300Mi"
+              cpu: "200m"
+            limits:
+              memory: "450Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: program-service-green
+  labels:
+    app: program-service
+    color: green
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: program-service
+      color: green
+  template:
+    metadata:
+      labels:
+        app: program-service
+        color: green
+    spec:
+      containers:
+        - name: program-service
+          image: salitha12345/new-event-program-service:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "300Mi"
+              cpu: "200m"
+            limits:
+              memory: "450Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: program-service
+spec:
+  selector:
+    app: program-service
+    color: blue
+  ports:
+    - port: 8080
+      targetPort: 8080

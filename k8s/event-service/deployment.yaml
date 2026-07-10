@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-service-blue
+  labels:
+    app: event-service
+    color: blue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: event-service
+      color: blue
+  template:
+    metadata:
+      labels:
+        app: event-service
+        color: blue
+    spec:
+      containers:
+        - name: event-service
+          # Replace with your actual Docker Hub image + tag once pushed
+          image: salitha12345/new-event-event-service:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "300Mi"
+              cpu: "200m"
+            limits:
+              memory: "450Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-service-green
+  labels:
+    app: event-service
+    color: green
+spec:
+  # Starts at 0 replicas - green is the idle/standby color until the CI/CD
+  # pipeline's first deploy scales it up and cuts traffic over. Avoids
+  # running (and paying RAM for) two live copies before you actually need
+  # blue-green in practice.
+  replicas: 0
+  selector:
+    matchLabels:
+      app: event-service
+      color: green
+  template:
+    metadata:
+      labels:
+        app: event-service
+        color: green
+    spec:
+      containers:
+        - name: event-service
+          image: salitha12345/new-event-event-service:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "300Mi"
+              cpu: "200m"
+            limits:
+              memory: "450Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: event-service
+spec:
+  selector:
+    app: event-service
+    color: blue
+    # This "color: blue" line is exactly what Day 17's CI/CD pipeline
+    # patches to swap traffic over during a blue-green cutover.
+  ports:
+    - port: 8080
+      targetPort: 8080

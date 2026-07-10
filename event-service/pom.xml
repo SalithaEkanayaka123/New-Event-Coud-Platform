@@ -41,6 +41,14 @@
                  for the Observability requirement (#6) once Prometheus scrapes it -->
         </dependency>
         <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <!-- Exposes /actuator/prometheus in Prometheus's scrape format.
+                 Adding this now (Day 2) instead of retrofitting on Day 14
+                 means Observability setup later is just pointing Prometheus
+                 at an endpoint that already exists. -->
+        </dependency>
+        <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>

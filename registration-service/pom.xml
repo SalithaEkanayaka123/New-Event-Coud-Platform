@@ -61,6 +61,16 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>lambda</artifactId>
+            <version>2.28.29</version>
+            <!-- AWS SDK v2 Lambda client - used by LambdaSeatThresholdNotifier
+                 to invoke the real seat-threshold-notifier function built
+                 on Day 5. Uses the EC2 instance's IAM role for credentials
+                 (see IAM policy note in the deployment steps) - no static
+                 access keys baked into the app or a K8s secret. -->
+        </dependency>
     </dependencies>
 
     <build>

@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+type: Opaque
+stringData:
+  POSTGRES_USER: eventapp
+  POSTGRES_PASSWORD: changeme_local_dev
+  POSTGRES_DB: eventdb
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  # Deliberately NOT blue/green - Postgres is a stateful data store, not a
+  # swappable app version. Blue/green makes sense for the 3 services
+  # (different code versions); it doesn't make sense for the database
+  # itself, which should have exactly one instance.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: postgres-credentials
+          resources:
+            requests:
+              memory: "200Mi"
+              cpu: "100m"
+            limits:
+              memory: "400Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
