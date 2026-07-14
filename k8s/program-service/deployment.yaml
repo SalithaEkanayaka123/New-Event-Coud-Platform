@@ -17,6 +17,8 @@ spec:
         app: program-service
         color: blue
     spec:
+      nodeSelector:
+        role: core
       containers:
         - name: program-service
           image: salitha12345/new-event-program-service:latest
@@ -61,6 +63,8 @@ spec:
         app: program-service
         color: green
     spec:
+      nodeSelector:
+        role: core
       containers:
         - name: program-service
           image: salitha12345/new-event-program-service:latest

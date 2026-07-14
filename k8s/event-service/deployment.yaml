@@ -17,6 +17,8 @@ spec:
         app: event-service
         color: blue
     spec:
+      nodeSelector:
+        role: core
       containers:
         - name: event-service
           # Replace with your actual Docker Hub image + tag once pushed
@@ -66,6 +68,8 @@ spec:
         app: event-service
         color: green
     spec:
+      nodeSelector:
+        role: core
       containers:
         - name: event-service
           image: salitha12345/new-event-event-service:latest

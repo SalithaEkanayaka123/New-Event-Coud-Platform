@@ -17,6 +17,8 @@ spec:
         app: registration-service
         color: blue
     spec:
+      nodeSelector:
+        role: core
       # No AWS credentials here at all (no env vars, no mounted secret) -
       # LambdaSeatThresholdNotifier picks up the EC2 instance's own IAM
       # role automatically via the AWS SDK's default credential chain.
@@ -65,6 +67,8 @@ spec:
         app: registration-service
         color: green
     spec:
+      nodeSelector:
+        role: core
       containers:
         - name: registration-service
           image: salitha12345/new-event-registration-service:latest

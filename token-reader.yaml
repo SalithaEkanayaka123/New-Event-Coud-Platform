@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: token-reader
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    role: core
+  containers:
+    - name: reader
+      image: busybox
+      command: ["sh", "-c", "ls -la /host-token/ && echo ---- && cat /host-token/token 2>/dev/null || cat /host-token/node-token"]
+      volumeMounts:
+        - name: token
+          mountPath: /host-token
+          readOnly: true
+  volumes:
+    - name: token
+      hostPath:
+        path: /var/lib/rancher/k3s/server
