@@ -9,6 +9,25 @@ spec:
     requests:
       storage: 5Gi
 ---
+# Same fix as Day 8's docker-compose zz- prefixed file, in K8s form:
+# setting CLICKHOUSE_USER/CLICKHOUSE_PASSWORD makes ClickHouse auto-generate
+# a users config with access_management: 0 for the default user. This
+# override loads last (zz- prefix, alphabetical order in users.d) and wins,
+# restoring the default user's ability to CREATE USER / GRANT.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-users-override
+data:
+  zz-enable-access-management.xml: |
+    <clickhouse>
+      <users>
+        <default>
+          <access_management>1</access_management>
+        </default>
+      </users>
+    </clickhouse>
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,10 +44,10 @@ spec:
       labels:
         app: clickhouse
     spec:
+      nodeSelector:
+        role: analytics
       containers:
         - name: clickhouse
-          # Same image already proven working in local docker-compose
-          # testing (Day 8) - no new unknowns introduced here.
           image: clickhouse/clickhouse-server:24.8
           ports:
             - containerPort: 8123 # HTTP interface - what analytics.js uses
@@ -50,10 +69,16 @@ spec:
           volumeMounts:
             - name: clickhouse-storage
               mountPath: /var/lib/clickhouse
+            - name: users-override
+              mountPath: /etc/clickhouse-server/users.d/zz-enable-access-management.xml
+              subPath: zz-enable-access-management.xml
       volumes:
         - name: clickhouse-storage
           persistentVolumeClaim:
             claimName: clickhouse-data
+        - name: users-override
+          configMap:
+            name: clickhouse-users-override
 ---
 apiVersion: v1
 kind: Service
