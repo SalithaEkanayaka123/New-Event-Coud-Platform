@@ -41,26 +41,6 @@ jobs:
           # just "whatever wasn't overwritten yet."
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/new-event-${{ matrix.service }}:${{ github.sha }}
 
-  # ---------------------------------------------------------------------
-  # DEPLOY STAGE - requires the KUBECONFIG_DATA secret (base64 of the
-  # k3s kubeconfig, pointing at the cluster's Elastic IP). Assumes each
-  # component has blue/green Deployment pairs (event-service-blue,
-  # event-service-green, etc.) and one Service per component with a
-  # "color" selector - true for all 4 components since Day 13.
-  #
-  # Day 17 reconciliation fixes (vs. the Day 9 draft):
-  #   1. Green Deployments live at replicas=0 (deliberate - idle color
-  #      costs no RAM), so the deploy step must SCALE UP the idle color,
-  #      not just set its image. Without this, no pods ever start and
-  #      the smoke test finds nothing.
-  #   2. rollout timeout 60s -> 180s: the Spring Boot services take
-  #      ~50-90s to boot and pass readiness on this cluster.
-  #   3. Smoke test now waits on pod Readiness instead of exec+curl.
-  #      Readiness IS the health check here - the readiness probe hits
-  #      /actuator/health - and the slim JRE runtime images don't ship
-  #      curl. This also covers the frontend, which the exec-based
-  #      version skipped.
-  # ---------------------------------------------------------------------
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
