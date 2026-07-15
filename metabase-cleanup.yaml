@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: metabase-cleanup
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    role: analytics
+  containers:
+    - name: cleanup
+      image: busybox
+      command: ["sh", "-c", "ls -la /metabase-data/ && rm -rf /metabase-data/metabase.db && echo CLEANED && ls -la /metabase-data/"]
+      volumeMounts:
+        - name: data
+          mountPath: /metabase-data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: metabase-data

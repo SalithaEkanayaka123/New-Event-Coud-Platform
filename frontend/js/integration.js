@@ -10,16 +10,25 @@
 // (checked separately via Postman/DB query, not via this file) gives the
 // click-to-completion funnel/drop-off rate without needing a live
 // frontend-to-backend call.
-const CLICKHOUSE_URL = "http://localhost:8123";
+const CLICKHOUSE_URL = "http://18.235.163.241/clickhouse";
 const CLICKHOUSE_USER = "analytics_writer";
-const CLICKHOUSE_PASSWORD = "CHANGE_ME_BEFORE_RUNNING"; // matches clickhouse-prep/restricted-user.sql
+const CLICKHOUSE_PASSWORD = "analytics_wr1ter_2026"; // matches clickhouse-prep/restricted-user.sql
 
 // ---------- Analytics (anonymous - no name/email ever sent here) ----------
 
 function getSessionId() {
   let sid = sessionStorage.getItem("session_id");
   if (!sid) {
-    sid = crypto.randomUUID();
+    // crypto.randomUUID() only exists in secure contexts (HTTPS/localhost);
+    // this site is served over plain HTTP, so fall back to a manual UUID v4.
+    if (window.crypto && typeof crypto.randomUUID === "function") {
+      sid = crypto.randomUUID();
+    } else {
+      sid = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+      });
+    }
     sessionStorage.setItem("session_id", sid);
   }
   return sid;

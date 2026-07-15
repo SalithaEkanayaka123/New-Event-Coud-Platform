@@ -21,7 +21,7 @@ spec:
         role: core
       containers:
         - name: frontend
-          image: salitha12345/new-event-frontend:7c2a8dfd116bc9f4e5827774396c7ee21aef8cee
+          image: salitha12345/new-event-frontend:day14d
           ports:
             - containerPort: 80
           resources:
@@ -61,7 +61,7 @@ spec:
         role: core
       containers:
         - name: frontend
-          image: salitha12345/new-event-frontend:7c2a8dfd116bc9f4e5827774396c7ee21aef8cee
+          image: salitha12345/new-event-frontend:day14d
           ports:
             - containerPort: 80
           resources:
