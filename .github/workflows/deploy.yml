@@ -42,12 +42,24 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/new-event-${{ matrix.service }}:${{ github.sha }}
 
   # ---------------------------------------------------------------------
-  # DEPLOY STAGE - written now, but cannot succeed until Day 17, when
-  # the KUBECONFIG_DATA secret (pointing at the real EC2/k3s cluster)
-  # exists. Assumes each service already has blue/green Deployment pairs
-  # (event-service-blue, event-service-green, etc.) and one Service per
-  # component with a "color" selector - set up when services are deployed
-  # (Day 11) and frontend/ClickHouse are deployed (Day 13).
+  # DEPLOY STAGE - requires the KUBECONFIG_DATA secret (base64 of the
+  # k3s kubeconfig, pointing at the cluster's Elastic IP). Assumes each
+  # component has blue/green Deployment pairs (event-service-blue,
+  # event-service-green, etc.) and one Service per component with a
+  # "color" selector - true for all 4 components since Day 13.
+  #
+  # Day 17 reconciliation fixes (vs. the Day 9 draft):
+  #   1. Green Deployments live at replicas=0 (deliberate - idle color
+  #      costs no RAM), so the deploy step must SCALE UP the idle color,
+  #      not just set its image. Without this, no pods ever start and
+  #      the smoke test finds nothing.
+  #   2. rollout timeout 60s -> 180s: the Spring Boot services take
+  #      ~50-90s to boot and pass readiness on this cluster.
+  #   3. Smoke test now waits on pod Readiness instead of exec+curl.
+  #      Readiness IS the health check here - the readiness probe hits
+  #      /actuator/health - and the slim JRE runtime images don't ship
+  #      curl. This also covers the frontend, which the exec-based
+  #      version skipped.
   # ---------------------------------------------------------------------
   deploy:
     needs: build-and-push
@@ -81,17 +93,19 @@ jobs:
           for svc in event-service program-service registration-service frontend; do
             kubectl set image deployment/${svc}-${{ steps.idle.outputs.color }} \
               ${svc}=${{ secrets.DOCKERHUB_USERNAME }}/new-event-${svc}:${{ github.sha }}
-            kubectl rollout status deployment/${svc}-${{ steps.idle.outputs.color }} --timeout=60s
+            kubectl scale deployment/${svc}-${{ steps.idle.outputs.color }} --replicas=1
+            kubectl rollout status deployment/${svc}-${{ steps.idle.outputs.color }} --timeout=180s
           done
 
       - name: Smoke test idle color before cutover
         run: |
-          # Exec into an idle-color pod directly and hit its own health
-          # endpoint - avoids needing a second, separate "internal-only"
-          # Service object just for pre-cutover testing.
-          for svc in event-service program-service registration-service; do
-            POD=$(kubectl get pod -l app=${svc},color=${{ steps.idle.outputs.color }} -o jsonpath='{.items[0].metadata.name}')
-            kubectl exec $POD -- curl -sf http://localhost:8080/actuator/health
+          # A pod reporting Ready means its readiness probe (which hits
+          # /actuator/health for the services, / for the frontend) has
+          # passed - so waiting on Readiness is the smoke test, without
+          # needing curl inside the slim runtime images.
+          for svc in event-service program-service registration-service frontend; do
+            kubectl wait --for=condition=ready pod \
+              -l app=${svc},color=${{ steps.idle.outputs.color }} --timeout=120s
           done
 
       - name: Cut over traffic to the new color

@@ -4,6 +4,8 @@
 
 prometheus:
   prometheusSpec:
+    nodeSelector:
+      role: analytics
     retention: 3d
     # Short retention - this is a coursework demo, not a production
     # system needing months of history. Keeps disk/memory small.
@@ -12,20 +14,43 @@ prometheus:
         memory: "300Mi"
         cpu: "100m"
       limits:
-        memory: "500Mi"
+        memory: "600Mi"
         cpu: "300m"
 
 grafana:
+  nodeSelector:
+    role: analytics
   resources:
     requests:
-      memory: "100Mi"
-      cpu: "50m"
-    limits:
       memory: "200Mi"
-      cpu: "150m"
-  # Default admin password - change before actually installing (Day 15)
-  adminPassword: "CHANGE_ME_BEFORE_INSTALLING"
+      cpu: "100m"
+    limits:
+      memory: "450Mi"
+      cpu: "500m"
+  # ^ RESIZED (Day 16 incident): the original 250Mi/150m limits caused
+  #   exit-137 kills and a liveness-probe restart loop - Grafana v13 was
+  #   CPU-throttled so hard it failed its own health check. Same failure
+  #   class as the Metabase OOM and the Spring Boot probe storm.
+  adminPassword: "grafana_adm1n_2026"
+  service:
+    type: NodePort
+    nodePort: 30301
+  # ^ Same direct-access pattern as Metabase (30300) - avoids the
+  #   flaky port-forward path entirely. Needs the SG rule for 30301.
 
-# Your 3 services already expose /actuator/prometheus (added Day 2-4) -
+alertmanager:
+  enabled: false
+  # ^ Not needed for the coursework; saves ~200Mi on Node 2
+
+kubeStateMetrics:
+  nodeSelector:
+    role: analytics
+  # ^ Small pod, but keep all monitoring components on the
+  #   analytics node for a clean placement story
+
+# node-exporter is a DaemonSet - deliberately NOT given a nodeSelector:
+# it must run on BOTH nodes to collect per-node metrics. That's the point.
+
+# The 3 services already expose /actuator/prometheus (added Day 2-4) -
 # kube-prometheus-stack auto-discovers pods via ServiceMonitor CRDs once
-# you add the right annotations/labels on Day 15's actual deployment.
+# the right annotations/labels are added.
